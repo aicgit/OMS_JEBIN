@@ -1,0 +1,28 @@
+DECLARE DBSrchSource      SHARED CHARACTER 'MSGBUS';
+DECLARE DBSrchSchema      SHARED CHARACTER 'dbo';
+DECLARE DBSrchInterface    SHARED CHARACTER 'OMSTOIH';
+DECLARE DBSrchTable       SHARED CHARACTER 'ESB_CONFIG';
+
+		
+DECLARE OMSToIHConfigCache        SHARED ROW;
+DECLARE isOMSToIHConfigCacheExist SHARED BOOLEAN FALSE;
+
+CREATE PROCEDURE loadConfigurableProperties()
+BEGIN	
+	  		
+		IF isOMSToIHConfigCacheExist THEN
+            -- Do Nothing..
+		ELSE
+			DECLARE TEMPCACHE ROW;
+			SET TEMPCACHE.Destination[] = SELECT T.IDENTIFIER,T.ATTRIBUTES FROM Database.{DBSrchSource}.{DBSrchSchema}.{DBSrchTable} AS T WHERE T.INTERFACE= DBSrchInterface;
+			--SELECT T.IDENTIFIER,T.ATTRIBUTES FROM Database.{DBSrchSource}.{DBSrchSchema}.{DBSrchTable} AS T WHERE T.INTERFACE= DBSrchInterface;			
+			FOR cacheline AS TEMPCACHE.Destination[] DO
+				CREATE LASTCHILD OF OMSToIHConfigCache NAME cacheline.IDENTIFIER VALUE cacheline.ATTRIBUTES;
+			END FOR;
+			SET isOMSToIHConfigCacheExist = TRUE;
+		END IF;		
+END;
+
+
+
+

@@ -1,0 +1,249 @@
+
+DECLARE TableName EXTERNAL CHARACTER '';
+DECLARE AttrTableName EXTERNAL CHARACTER '';
+
+CREATE COMPUTE MODULE OMS_To_InventoryHUB_MF_Compute
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		
+		CALL loadConfigurableProperties();
+		
+		/*Foundfull AND Ecometryfull FEED */
+
+		IF (EXISTS(InputRoot.XMLNSC.*:InventorySnapShot.*:ShipNode.*:Item[]))THEN
+			DECLARE InRef REFERENCE TO InputRoot.XMLNSC.*:InventorySnapShot.*:ShipNode.*:Item[1];
+			DECLARE ItemID,OrgCode,ProdClass,ShipNode, ShipNodeEcom, SupplyType, EcomAvlQty, FoundAvlQty,UPC,BOPUSSafetyFactorQuantity,OnhandSafetyFactorQuantity,ETA CHARACTER;
+--			DECLARE FNDFLCACHE ROW;
+--			DECLARE ECOMCACHE ROW;
+
+
+			WHILE LASTMOVE(InRef) DO
+
+				SET ItemID        = COALESCE(InRef.(XMLNSC.Attribute)ItemID,'');
+				IF InRef.ItemAliasList.ItemAlias.(XMLNSC.Attribute)AliasName = 'UPC' THEN
+				SET UPC			  =	COALESCE(InRef.ItemAliasList.ItemAlias.(XMLNSC.Attribute)AliasValue,'');
+				END IF;
+				SET OrgCode       = COALESCE(InRef.(XMLNSC.Attribute)InventoryOrganizationCode,'');
+				SET ProdClass     = COALESCE(InRef.(XMLNSC.Attribute)ProductClass,'');
+				--SET ShipNode      = COALESCE(InRef.*:DemandDetails.(XMLNSC.Attribute)ShipNode,'');
+				SET ShipNodeEcom  = COALESCE(InputRoot.XMLNSC.*:InventorySnapShot.*:ShipNode.(XMLNSC.Attribute)ShipNode,'');
+				SET SupplyType    = COALESCE(InRef.*:SupplyDetails.(XMLNSC.Attribute)SupplyType,'');
+				SET EcomAvlQty    = CAST(COALESCE(InRef.*:SupplyDetails.(XMLNSC.Attribute)EcometryAvlQuantity,'0') AS DECIMAL);
+				SET FoundAvlQty	  = CAST(COALESCE(InRef.*:SupplyDetails.(XMLNSC.Attribute)FoundAvlQuantity,'0') AS DECIMAL);
+				SET BOPUSSafetyFactorQuantity= CAST(COALESCE(InRef.*:SupplyDetails.(XMLNSC.Attribute)BOPUSSafetyFactorQuantity,'0') AS DECIMAL);
+				SET OnhandSafetyFactorQuantity= CAST(COALESCE(InRef.*:SupplyDetails.(XMLNSC.Attribute)OnhandSafetyFactorQuantity,'0') AS DECIMAL);
+				SET ETA=COALESCE(InRef.*:SupplyDetails.(XMLNSC.Attribute)ETA,'');
+--				SET FNDFLCACHE.Destination[] = SELECT T.ITEM_ID  FROM Database.{TableName} AS T WHERE T.ITEM_ID= ItemID AND T.ORGANISATION_CODE= OrgCode AND T.PRODUCT_CLASS= ProdClass AND T.NODE= ShipNode AND T.SUPPLY_TYPE= SupplyType AND T.INV_SOURCE='FNDFULL';
+--				SET ECOMCACHE.Destination[] = SELECT T.ITEM_ID  FROM Database.{TableName} AS T WHERE T.ITEM_ID= ItemID AND T.ORGANISATION_CODE= OrgCode AND T.PRODUCT_CLASS= ProdClass AND T.NODE= ShipNodeEcom AND T.SUPPLY_TYPE= SupplyType AND T.INV_SOURCE='ECOFULL';
+--				
+--				
+--					DELETE FROM Database.{TableName} AS D1 WHERE TRIM(D1.ITEM_ID)= TRIM(ItemID) AND TRIM(D1.ORGANISATION_CODE)= TRIM(OrgCode) AND TRIM(D1.NODE)= TRIM(ShipNodeEcom) AND TRIM(D1.SUPPLY_TYPE)= TRIM(SupplyType) AND TRIM(D1.INV_SOURCE) IN ('FNDFULL', 'ECOFULL'); -- AND TRIM(D1.PRODUCT_CLASS)= TRIM(ProdClass)
+--					
+--					SET Environment.SQLSTATE        = SQLSTATE;
+--					SET Environment.SQLCODE         = SQLCODE;
+--					SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+--					SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;
+				   			    
+				    INSERT INTO Database.{TableName} (ITEM_ID,UPC,INV_SOURCE,QUANTITY,NODE,SUPPLY_TYPE,PRODUCT_CLASS,ORGANISATION_CODE,SRC_UPDATE_DATE,BOPUS_SFTY_FCTR_QTY,ONHAND_SFTY_FCTR_QTY,FUTURE_AVAIL_DT) VALUES (ItemID, UPC,'FNDFULL', FoundAvlQty, ShipNodeEcom, SupplyType, ProdClass, OrgCode, CURRENT_TIMESTAMP,BOPUSSafetyFactorQuantity,OnhandSafetyFactorQuantity,ETA);		   
+				    
+				    SET Environment.SQLSTATE        = SQLSTATE;
+					SET Environment.SQLCODE         = SQLCODE;
+					SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+					SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;
+			    	
+								    
+				    INSERT INTO Database.{TableName} (ITEM_ID,UPC,INV_SOURCE,QUANTITY,NODE,SUPPLY_TYPE,PRODUCT_CLASS,ORGANISATION_CODE,SRC_UPDATE_DATE,BOPUS_SFTY_FCTR_QTY,ONHAND_SFTY_FCTR_QTY,FUTURE_AVAIL_DT) VALUES (ItemID,UPC,'ECOFULL',EcomAvlQty,ShipNodeEcom,SupplyType,ProdClass,OrgCode,CURRENT_TIMESTAMP,BOPUSSafetyFactorQuantity,OnhandSafetyFactorQuantity,ETA);		   
+				    
+				    SET Environment.SQLSTATE        = SQLSTATE;
+					SET Environment.SQLCODE         = SQLCODE;
+					SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+					SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;
+			   
+				
+			
+			MOVE InRef NEXTSIBLING;
+			END WHILE;
+			
+			
+			/*Founddelta feed*/
+			ELSEIF(EXISTS(InputRoot.XMLNSC.*:Items.*:Item[]))THEN
+			
+					DECLARE FNDItemID, FNDUPC, FNDOrganizationCode, FNDProductClass, FNDShipNode, FNDSupplyType, 
+							FNDQuantity, FNDOnhandSafetyFactorQuantity,FNDBOPUSSafetyFactorQuantity, SysDate CHARACTER;
+					DECLARE ItemRef REFERENCE TO InputRoot.XMLNSC.*:Items.*:Item[1];
+					
+					WHILE LASTMOVE(ItemRef) DO
+						SET FNDItemID		   				=	COALESCE(ItemRef.(XMLNSC.Attribute)ItemID,'');
+						
+						IF ItemRef.ItemAliasList.ItemAlias.(XMLNSC.Attribute)AliasName='UPC' THEN
+							SET FNDUPC						=	COALESCE(ItemRef.ItemAliasList.ItemAlias.(XMLNSC.Attribute)AliasValue,'');
+						END IF;
+							
+						SET FNDOrganizationCode				=	COALESCE(ItemRef.(XMLNSC.Attribute)OrganizationCode,'');
+						SET FNDProductClass					=	COALESCE(ItemRef.(XMLNSC.Attribute)ProductClass,'');
+						SET FNDShipNode						=	COALESCE(ItemRef.(XMLNSC.Attribute)ShipNode,'');
+						SET FNDSupplyType					=	COALESCE(ItemRef.(XMLNSC.Attribute)SupplyType,'');
+						SET FNDQuantity						= 	COALESCE(CAST(ItemRef.(XMLNSC.Attribute)Quantity AS DECIMAL),'0.00');
+						SET SysDate						  	=	CURRENT_TIMESTAMP;
+						SET FNDOnhandSafetyFactorQuantity 	= 	COALESCE(CAST(ItemRef.(XMLNSC.Attribute)OnhandSafetyFactorQuantity AS DECIMAL),'0.00');
+						SET FNDBOPUSSafetyFactorQuantity	=	COALESCE(CAST(ItemRef.(XMLNSC.Attribute)BOPUSSafetyFactorQuantity AS DECIMAL),'0.00');
+						
+		
+						INSERT INTO Database.{TableName} (ITEM_ID, UPC, ORGANISATION_CODE, PRODUCT_CLASS, NODE, SUPPLY_TYPE, 
+															QUANTITY,  ONHAND_SFTY_FCTR_QTY, BOPUS_SFTY_FCTR_QTY, INV_SOURCE,SRC_UPDATE_DATE) 
+															VALUES (FNDItemID, FNDUPC, FNDOrganizationCode, FNDProductClass, FNDShipNode, FNDSupplyType, FNDQuantity,
+															 FNDOnhandSafetyFactorQuantity, FNDBOPUSSafetyFactorQuantity,'FNDDLTA',CURRENT_TIMESTAMP);
+		
+						SET Environment.SQLSTATE 		= SQLSTATE;
+						SET Environment.SQLCODE 		= SQLCODE;
+						SET Environment.SQLERRORTEXT 	= SQLERRORTEXT;
+						SET Environment.SQLNATIVEERROR 	= SQLNATIVEERROR;
+		
+		
+		
+						MOVE ItemRef NEXTSIBLING;
+					END WHILE;
+
+--			SET FNDFLCACHE 		= NULL;
+--			SET ECOMCACHE 		= NULL;
+--			
+			/*RTAM inventory feed*/
+		ELSEIF EXISTS (InputRoot.XMLNSC.*:InventoryItem.*:*[]) THEN
+			DECLARE RTamRef REFERENCE TO InputRoot.XMLNSC.*:InventoryItem;
+			
+			DECLARE AttRef REFERENCE TO InputRoot.XMLNSC.*:InventoryItem.*:Item.*:AdditionalAttributeList.*:AdditionalAttribute[1];
+			DECLARE RTItemId, UPC, RTOrganization_Code, RTProductClass, RTNode, DistributionRuleID, AlertType, OnhandAvailableQuantity, AvailableQuantity,
+					EffectiveUntilDate, MonitorOption, AlertRaisedOn, ColorCode, SizeCode CHARACTER;
+			DECLARE RTITEM_ID, ATTR_DOMAIN_ID, ATTRIBUTE_GROUP_ID, ADD_ATTRIBUTE_NAME, ADD_ATTRIBUTE_VALUE CHARACTER;
+			DECLARE RTAMCACHE ROW;
+			DECLARE RTAMi, RTAMDel,i, RTAMDBCount, AvlChangeCount,loopvar INTEGER 0;
+			DECLARE RTamRef2 REFERENCE TO InputRoot.XMLNSC.*:InventoryItem.*:AvailabilityChanges.*:AvailabilityChange[1];
+			DECLARE RtamRef3 REFERENCE TO InputRoot.XMLNSC.*:InventoryItem.*:AvailabilityChanges.*:AvailabilityChange[1];
+			
+			
+			SET RTItemId 							=	COALESCE(RTamRef.(XMLNSC.Attribute)ItemID, '');
+			IF RTamRef.Item.ItemAliasList.ItemAlias.(XMLNSC.Attribute)AliasName = 'UPC' THEN
+				SET UPC								=	COALESCE(RTamRef.Item.ItemAliasList.ItemAlias.(XMLNSC.Attribute)AliasValue,'');
+			END IF;
+			SET RTProductClass						=	COALESCE(RTamRef.(XMLNSC.Attribute)ProductClass,'');
+			SET ColorCode							=	COALESCE(RTamRef.Item.PrimaryInformation.(XMLNSC.Attribute)ColorCode,'');
+			SET SizeCode							=	COALESCE(RTamRef.Item.PrimaryInformation.(XMLNSC.Attribute)SizeCode,'');
+			
+			WHILE LASTMOVE (RTamRef2) DO
+				
+				SET RTOrganization_Code 			=	COALESCE(RTamRef2.(XMLNSC.Attribute)OrganizationCode,'');
+				SET RTNode              			=   COALESCE(RTamRef2.(XMLNSC.Attribute)Node,'');
+				SET DistributionRuleID 				=   COALESCE(RTamRef2.(XMLNSC.Attribute)DistributionRuleId,'');
+				SET AlertType          				=   COALESCE(RTamRef2.(XMLNSC.Attribute)AlertType,'');
+				
+--				IF (RTamRef2.(XMLNSC.Attribute)AlertType) = 'REALTIME_ONHAND' THEN
+--					SET OnhandAvailableQuantity		=	COALESCE(RTamRef2.(XMLNSC.Attribute)OnhandAvailableQuantity,'0');
+--				ELSE
+--					SET OnhandAvailableQuantity='0'; 
+--				END IF;
+--				
+--				IF (RTamRef2.(XMLNSC.Attribute)AlertType) = 'REALTIME_FUTURE_MAX' THEN
+--					SET AvailableQuantity			=	COALESCE(RTamRef2.AvailabilityInformation.AvailableInventory.(XMLNSC.Attribute)AvailableQuantity,'0');
+--					SET EffectiveUntilDate			=	COALESCE(RTamRef2.AvailabilityInformation.AvailableInventory.(XMLNSC.Attribute)EffectiveUntilDate,'');
+--				ELSE
+--					SET AvailableQuantity			='0';
+--				
+--				END IF;
+				
+				SET MonitorOption					=	COALESCE(RTamRef2.(XMLNSC.Attribute)MonitorOption,'');
+				SET AlertRaisedOn					=	COALESCE(RTamRef2.(XMLNSC.Attribute)AlertRaisedOn,'');
+				SET AvlChangeCount= CARDINALITY (RTamRef2.*:AvailabilityInformation.*:AvailableInventory[]);
+				IF AvlChangeCount=0 THEN
+					SET 	OnhandAvailableQuantity=0;
+					SET 	AvailableQuantity=0;
+					SET		EffectiveUntilDate='';
+					INSERT INTO Database.{TableName} (ITEM_ID, UPC, ORGANISATION_CODE, PRODUCT_CLASS, NODE, DISTRIBUTION_RULE_ID, 
+															  ALERT_TYPE, QUANTITY, FUTURE_AVAIL_QTY, FUTURE_AVAIL_DT, MONITOR_OPTION, 
+															  ALERT_RAISED_ON, COLOR_CODE, SIZE_CODE, INV_SOURCE,SRC_UPDATE_DATE) 
+															  VALUES (RTItemId, UPC, RTOrganization_Code, RTProductClass, RTNode, DistributionRuleID,
+															  AlertType, OnhandAvailableQuantity, AvailableQuantity, EffectiveUntilDate, MonitorOption,
+															  AlertRaisedOn, ColorCode, SizeCode, 'RTAM',CURRENT_TIMESTAMP);
+										SET Environment.SQLSTATE        = SQLSTATE;
+										SET Environment.SQLCODE         = SQLCODE;
+										SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+										SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;	
+					
+				ELSE
+						SET loopvar=1;
+						While loopvar<=AvlChangeCount Do
+						 	
+						 	IF (RTamRef2.*:AvailabilityInformation.*:AvailableInventory[loopvar].(XMLNSC.Attribute)IsOnhand='Y') THEN
+						 		SET OnhandAvailableQuantity= RTamRef2.*:AvailabilityInformation.*:AvailableInventory[loopvar].(XMLNSC.Attribute)AvailableQuantity;
+						 		SET 	AvailableQuantity=0;
+								SET		EffectiveUntilDate='';
+						 	ELSE
+						 		SET OnhandAvailableQuantity= 0;
+						 		SET 	AvailableQuantity=RTamRef2.*:AvailabilityInformation.*:AvailableInventory[loopvar].(XMLNSC.Attribute)AvailableQuantity;
+								SET		EffectiveUntilDate=RTamRef2.*:AvailabilityInformation.*:AvailableInventory[loopvar].(XMLNSC.Attribute)EffectiveUntilDate;
+						 	END IF;			
+						--IF EXISTS (RTAMCACHE.Destination[]) THEN
+		--						DELETE FROM Database.{TableName} AS D1 WHERE TRIM(D1.ITEM_ID)= TRIM(RTItemId) AND TRIM(D1.ORGANISATION_CODE)= TRIM(RTOrganization_Code)  AND TRIM(D1.DISTRIBUTION_RULE_ID) = TRIM(DistributionRuleID)  AND TRIM(D1.INV_SOURCE)='RTAM' AND TRIM(D1.MONITOR_OPTION)= TRIM(MonitorOption);--AND TRIM(D1.PRODUCT_CLASS)= TRIM(RTProductClass) ;
+		--									SET Environment.SQLSTATE        = SQLSTATE;
+		--									SET Environment.SQLCODE         = SQLCODE;
+		--									SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+		--									SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;
+		--						DELETE FROM Database.{TableName} AS D1 WHERE TRIM(D1.ITEM_ID)= TRIM(RTItemId)  AND TRIM(D1.NODE) = TRIM(RTNode)  AND TRIM(D1.INV_SOURCE)='RTAM' AND TRIM(D1.MONITOR_OPTION)= TRIM(MonitorOption);--AND TRIM(D1.PRODUCT_CLASS)= TRIM(RTProductClass) AND TRIM(D1.ORGANISATION_CODE)= TRIM(RTOrganization_Code)  ;
+		--									SET Environment.SQLSTATE        = SQLSTATE;
+		--									SET Environment.SQLCODE         = SQLCODE;
+		--									SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+		--									SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;
+							
+											
+								INSERT INTO Database.{TableName} (ITEM_ID, UPC, ORGANISATION_CODE, PRODUCT_CLASS, NODE, DISTRIBUTION_RULE_ID, 
+																  ALERT_TYPE, QUANTITY, FUTURE_AVAIL_QTY, FUTURE_AVAIL_DT, MONITOR_OPTION, 
+																  ALERT_RAISED_ON, COLOR_CODE, SIZE_CODE, INV_SOURCE,SRC_UPDATE_DATE) 
+																  VALUES (RTItemId, UPC, RTOrganization_Code, RTProductClass, RTNode, DistributionRuleID,
+																  AlertType, OnhandAvailableQuantity, AvailableQuantity, EffectiveUntilDate, MonitorOption,
+																  AlertRaisedOn, ColorCode, SizeCode, 'RTAM',CURRENT_TIMESTAMP);
+											SET Environment.SQLSTATE        = SQLSTATE;
+											SET Environment.SQLCODE         = SQLCODE;
+											SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+											SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;	
+											
+							SET loopvar=loopvar+1;
+						 	END WHILE;										
+				 	END IF;
+				MOVE RTamRef2 NEXTSIBLING;
+			END WHILE;
+			
+			
+			WHILE LASTMOVE(AttRef) DO
+				SET RTITEM_ID			=	COALESCE(InputRoot.XMLNSC.*:InventoryItem.*:Item.(XMLNSC.Attribute)ItemID, '');
+				SET ATTRIBUTE_GROUP_ID	=	COALESCE(AttRef.(XMLNSC.Attribute)AttributeGroupID,'');
+				SET ATTR_DOMAIN_ID		=	COALESCE(AttRef.(XMLNSC.Attribute)AttributeDomainID,'');
+				SET ADD_ATTRIBUTE_NAME	=	COALESCE(AttRef.(XMLNSC.Attribute)Name,'');
+				SET ADD_ATTRIBUTE_VALUE	=	COALESCE(AttRef.(XMLNSC.Attribute)Value,'');
+				
+				--SET RTAMCACHE.Attr[] = SELECT T.ITEM_ID FROM Database.{AttrTableName} AS T WHERE T.ITEM_ID= RTITEM_ID AND T.ATTRIBUTE_DOMAIN_ID= ATTR_DOMAIN_ID AND T.ATTRIBUTE_GROUP_ID= ATTRIBUTE_GROUP_ID AND T.ATTRIBUTE_NAME= ADD_ATTRIBUTE_NAME;
+
+				--IF EXISTS(RTAMCACHE.Attr[]) THEN
+--					DELETE FROM Database.{AttrTableName} AS D1 WHERE D1.ITEM_ID= RTITEM_ID AND D1.ATTRIBUTE_DOMAIN_ID= ATTR_DOMAIN_ID AND D1.ATTRIBUTE_GROUP_ID= ATTRIBUTE_GROUP_ID AND D1.ATTRIBUTE_NAME= ADD_ATTRIBUTE_NAME;
+--
+--					SET Environment.SQLSTATE        = SQLSTATE;
+--					SET Environment.SQLCODE         = SQLCODE;
+--					SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+--					SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;
+
+					INSERT INTO Database.{AttrTableName} (ITEM_ID,ATTRIBUTE_DOMAIN_ID,ATTRIBUTE_GROUP_ID,ATTRIBUTE_NAME,ATTRIBUTE_VALUE,UPDATE_DATE) VALUES (RTITEM_ID, ATTR_DOMAIN_ID, ATTRIBUTE_GROUP_ID, ADD_ATTRIBUTE_NAME, ADD_ATTRIBUTE_VALUE, CURRENT_TIMESTAMP);
+
+					SET Environment.SQLSTATE        = SQLSTATE;
+					SET Environment.SQLCODE         = SQLCODE;
+					SET Environment.SQLERRORTEXT    = SQLERRORTEXT;
+					SET Environment.SQLNATIVEERROR  = SQLNATIVEERROR;
+
+				--END IF;
+			MOVE AttRef NEXTSIBLING;
+			END WHILE;
+
+			--SET RTAMCACHE = NULL;
+			
+					
+			END IF;
+		END;
+	END MODULE;
+

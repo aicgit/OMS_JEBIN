@@ -1,0 +1,19 @@
+
+
+CREATE COMPUTE MODULE ErrorHandlerInventoryHub_SendToFile
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		----Putting the actual input message from OMS into a File directory---
+		CALL CopyEntireMessage();
+		SET OutputRoot.MQMD = NULL;
+		SET OutputLocalEnvironment.Destination.File.Directory	= OMSToIHConfigCache.{'InventoryHub_Error_FilePath'};
+		SET OutputLocalEnvironment.Destination.File.Name 		= 'InventoryHub_Original_Message_'|| CAST(CURRENT_TIMESTAMP AS CHARACTER FORMAT 'yyyyMMddHHmmssSSS') ||'.txt';
+				
+		RETURN TRUE;
+	END;
+	
+	CREATE PROCEDURE CopyEntireMessage() BEGIN
+		SET OutputRoot = InputRoot;
+	END;
+		
+END MODULE;

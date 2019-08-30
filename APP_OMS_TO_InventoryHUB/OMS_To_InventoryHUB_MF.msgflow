@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode" xmlns:ComIbmMQInput.msgnode="ComIbmMQInput.msgnode" xmlns:ErrorHandlerInventoryHub.subflow="ErrorHandlerInventoryHub.subflow" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:eflow="http://www.ibm.com/wbi/2005/eflow" xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility" nsURI="OMS_To_InventoryHUB_MF.msgflow" nsPrefix="OMS_To_InventoryHUB_MF.msgflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <eStructuralFeatures xmi:type="ecore:EAttribute" xmi:id="Property.TableName" name="TableName" lowerBound="1" defaultValueLiteral="OMS_INVENTORY_AVAIL">
+      <eType xmi:type="ecore:EDataType" href="http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    </eStructuralFeatures>
+    <eStructuralFeatures xmi:type="ecore:EAttribute" xmi:id="Property.AttrTableName" name="AttrTableName" lowerBound="1" defaultValueLiteral="OMS_ITEM_ADD_ATTRIBUTES">
+      <eType xmi:type="ecore:EDataType" href="http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    </eStructuralFeatures>
+    <translation xmi:type="utility:TranslatableString" key="OMS_To_InventoryHUB_MF" bundleName="OMS_To_InventoryHUB_MF" pluginId="APP_OMS_TO_InventoryHUB"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/APP_OMS_TO_InventoryHUB/icons/full/obj16/OMS_To_InventoryHUB_MF.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/APP_OMS_TO_InventoryHUB/icons/full/obj30/OMS_To_InventoryHUB_MF.gif"/>
+    <composition>
+      <nodes xmi:type="ComIbmMQInput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_1" location="24,117" queueName="QL.IN.ESB_TO_INVENTORYHUB.OMS" messageDomainProperty="XMLNSC">
+        <translation xmi:type="utility:ConstantString" string="QL.IN.ESB_INVENTORYHUB.OMS"/>
+        <longDescription xmi:type="utility:ConstantString" string="QL.IN.ESB_INVENTORYHUB.OMS"/>
+      </nodes>
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_4" location="494,101" dataSource="OMS" computeExpression="esql://routine/#OMS_To_InventoryHUB_MF_Compute.Main">
+        <translation xmi:type="utility:ConstantString" string="Compute"/>
+      </nodes>
+      <nodes xmi:type="ErrorHandlerInventoryHub.subflow:FCMComposite_1" xmi:id="FCMComposite_1_5" location="233,14">
+        <translation xmi:type="utility:ConstantString" string="ErrorHandlerInventoryHub"/>
+      </nodes>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1" targetNode="FCMComposite_1_4" sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_6" targetNode="FCMComposite_1_5" sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.failure" targetTerminalName="InTerminal.Input"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_7" targetNode="FCMComposite_1_5" sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.catch" targetTerminalName="InTerminal.Input"/>
+    </composition>
+    <propertyOrganizer>
+      <propertyDescriptor groupName="Group.Basic" configurable="true" userDefined="true" describedAttribute="Property.TableName">
+        <propertyName xmi:type="utility:TranslatableString" key="Property.TableName" bundleName="OMS_To_InventoryHUB_MF" pluginId="APP_OMS_TO_InventoryHUB"/>
+        <propertyDescriptor groupName="Group.Basic" configurable="true" userDefined="true" describedAttribute="Property.AttrTableName">
+          <propertyName xmi:type="utility:TranslatableString" key="Property.AttrTableName" bundleName="OMS_To_InventoryHUB_MF" pluginId="APP_OMS_TO_InventoryHUB"/>
+        </propertyDescriptor>
+      </propertyDescriptor>
+    </propertyOrganizer>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>

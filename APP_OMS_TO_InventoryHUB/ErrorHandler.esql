@@ -1,0 +1,68 @@
+
+
+CREATE COMPUTE MODULE ErrorHandler_CaptureErrorMsgs
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		
+		
+				--CALL loadConfigurableProperties();
+		DECLARE ErrorText      CHARACTER '';
+		DECLARE CRLF           CHARACTER CAST(X'0D0A0D0A' AS CHAR CCSID 1208);
+		DECLARE prepareContent CHARACTER '';
+		DECLARE test       CHARACTER;
+		DECLARE INCCSID        INTEGER;
+		
+        DECLARE prevref    REFERENCE TO InputExceptionList.*[1];
+		DECLARE errorref   REFERENCE TO InputExceptionList.*[1];
+		DECLARE Listhandle REFERENCE TO InputExceptionList.*[1];
+		
+		--SET NodeName              = Environment.NodeName;
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.MQMD       = InputRoot.MQMD;		
+		SET test	= ApplicationLabel;
+		SET prepareContent        = 'APPLICATION NAME: '||ApplicationLabel||CRLF||'MESSAGE FLOW NAME: '||MessageFlowLabel ||CRLF||'NODE NAME: '||NodeLabel||CRLF||'EXCEPTION DETAILS: ';
+		SET INCCSID               = InputRoot.Properties.CodedCharSetId;
+		
+		IF INCCSID = 0 THEN
+		   SET INCCSID = 1208;	
+		END IF;
+		
+				
+			
+		WHILE LASTMOVE(Listhandle) DO
+        	  SET ErrorText = ErrorText || '--' || COALESCE(CAST(Listhandle.Number AS CHARACTER),'') || '--' || COALESCE(Listhandle.Text,'');			   			
+			  MOVE Listhandle LASTCHILD;		    		
+		END WHILE;
+		
+		
+		SET prepareContent                       = prepareContent || ErrorText;
+		
+
+		SET OutputRoot.EmailOutputHeader.Subject = OMSToIHConfigCache.{'SUBJECT_EMAIL'};
+		SET OutputRoot.EmailOutputHeader.From    = OMSToIHConfigCache.{'FROM_EMAIL'};
+		SET OutputRoot.EmailOutputHeader.To      = OMSToIHConfigCache.{'TO_EMAIL'};
+		
+		
+		SET OutputLocalEnvironment.Destination.Email.SMTPServer = OMSToIHConfigCache.{'SERVER_EMAIL'};
+        
+        SET OutputRoot.BLOB.BLOB                                = CAST(prepareContent AS BLOB CCSID 1208);  
+          
+		  RETURN TRUE;
+	END;
+
+
+
+	CREATE PROCEDURE CopyMessageHeaders() BEGIN
+		DECLARE I INTEGER 1;
+		DECLARE J INTEGER;
+		SET J = CARDINALITY(InputRoot.*[]);
+		WHILE I < J DO
+			SET OutputRoot.*[I] = InputRoot.*[I];
+			SET I = I + 1;
+		END WHILE;
+	END;
+
+	CREATE PROCEDURE CopyEntireMessage() BEGIN
+		SET OutputRoot = InputRoot;
+	END;
+END MODULE;
