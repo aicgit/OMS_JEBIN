@@ -6,6 +6,8 @@ CREATE COMPUTE MODULE OMS_To_InventoryHUB_MF_Compute
 	CREATE FUNCTION Main() RETURNS BOOLEAN
 	BEGIN
 		
+		
+		--Loading Cache Demo
 		CALL loadConfigurableProperties();
 		
 		/*Foundfull AND Ecometryfull FEED */
