@@ -7,7 +7,7 @@ CREATE COMPUTE MODULE OMS_To_InventoryHUB_MF_Compute
 	BEGIN
 		
 		
-		--Loading Cache Demo 2
+		--Loading Cache Demo 2 05SEP
 		CALL loadConfigurableProperties();
 		
 		/*Foundfull AND Ecometryfull FEED */

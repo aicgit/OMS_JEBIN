@@ -16,7 +16,7 @@
         <translation xmi:type="utility:ConstantString" string="QL.IN.ESB_INVENTORYHUB.OMS"/>
         <longDescription xmi:type="utility:ConstantString" string="QL.IN.ESB_INVENTORYHUB.OMS"/>
       </nodes>
-      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_4" location="349,117" dataSource="OMS" computeExpression="esql://routine/#OMS_To_InventoryHUB_MF_Compute.Main">
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_4" location="319,117" dataSource="OMS" computeExpression="esql://routine/#OMS_To_InventoryHUB_MF_Compute.Main">
         <translation xmi:type="utility:ConstantString" string="Compute"/>
       </nodes>
       <nodes xmi:type="ErrorHandlerInventoryHub.subflow:FCMComposite_1" xmi:id="FCMComposite_1_5" location="233,14">
