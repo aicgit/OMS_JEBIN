@@ -10,6 +10,7 @@ CREATE COMPUTE MODULE OMS_To_InventoryHUB_MF_Compute
 		--Loading Cache Demo 2 05SEP
 		--Demo for Ganesh and Madhavan..
 		--Check Check 09SEP2019...
+		--Demo 18SEP2019
 		CALL loadConfigurableProperties();
 		
 		/*Foundfull AND Ecometryfull FEED */
